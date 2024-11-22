@@ -1,5 +1,5 @@
 'use strict';
-const common = require('../common');
+require('../common');
 const assert = require('assert');
 
 const net = require('net');
@@ -50,9 +50,10 @@ function makeHttp10Request(cb) {
                 '\r\n');
     socket.resume(); // Ignore the response itself
 
-    setTimeout(function() {
-      cb(socket);
-    }, common.platformTimeout(50));
+    // Invoke the callback when the socket closes. The server should close it
+    // immediately after sending the response.
+    socket.on('close', cb);
+    // If the socket is not closed, the test will fail with a timeout.
   });
 }
 
@@ -62,9 +63,7 @@ server.listen(0, function() {
       // Both HTTP/1.1 requests should have used the same socket:
       assert.strictEqual(firstSocket, secondSocket);
 
-      makeHttp10Request(function(socket) {
-        // The server should have immediately closed the HTTP/1.0 socket:
-        assert.strictEqual(socket.closed, true);
+      makeHttp10Request(function() {
         server.close();
       });
     });
